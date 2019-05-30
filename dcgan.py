@@ -1,9 +1,10 @@
 from keras.models import Sequential
-from keras.layers import Dense, Reshape
+from keras.layers import Dense, Reshape, Dropout
 from keras.layers.core import Activation, Flatten
 from keras.layers.normalization import BatchNormalization
-from keras.layers.convolutional import UpSampling2D, Conv2D, MaxPooling2D
-from keras.optimizers import SGD
+from keras.layers.convolutional import UpSampling2D, Conv2D, MaxPooling2D, AveragePooling2D
+from keras.layers.advanced_activations import LeakyReLU
+from keras.optimizers import SGD, Adam, RMSprop
 from data_io import dataset_load, combine_images
 import numpy as np
 from PIL import Image
@@ -14,11 +15,12 @@ import datetime
 def generator_model():
     model = Sequential()
 
-    model.add(Dense(16*16*256, input_shape=(1000, )))
+    model.add(Dense(16*16*256, input_shape=(500, )))
     model.add(BatchNormalization())
     model.add(Activation("tanh"))
 
     model.add(Reshape((16, 16, 256), input_shape=(16*16*256,)))
+    model.add(Dropout((0.5)))
 
     model.add(UpSampling2D(size=(2, 2)))
     model.add(Conv2D(128, (5, 5),
@@ -26,48 +28,48 @@ def generator_model():
                      activation="tanh",
                      data_format="channels_last"))
 
+    model.add(Dropout((0.5)))
+
     model.add(UpSampling2D(size=(2, 2)))
 
     model.add(Conv2D(64, (5, 5),
                      padding="same",
                      activation="tanh",
                      data_format="channels_last"))
+
+    model.add(Dropout((0.5)))
+
     model.add(UpSampling2D(size=(2, 2)))
 
-    model.add(Conv2D(32, (5, 5),
-                     padding="same",
-                     activation="tanh",
-                     data_format="channels_last"))
-    model.add(UpSampling2D(size=(2, 2)))
     model.add(Conv2D(3, (5, 5),
                      padding="same",
                      activation="tanh",
                      data_format="channels_last"))
+
     return model
 
 
 def discriminator_model():
     model = Sequential()
-    model.add(Conv2D(32, (5, 5),
-                     padding="same",
-                     input_shape=(256, 256, 3),
-                     activation="tanh",
-                     data_format="channels_last"))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(64, (5, 5),
-                     activation="tanh",
+                     padding="same",
+                     input_shape=(128, 128, 3),
                      data_format="channels_last"))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(Dropout((0.3)))
+    model.add(AveragePooling2D(pool_size=(2, 2)))
     model.add(Conv2D(128, (5, 5),
-                     activation="tanh",
                      data_format="channels_last"))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(AveragePooling2D(pool_size=(2, 2)))
     model.add(Conv2D(256, (5, 5),
-                     activation="tanh",
                      data_format="channels_last"))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(Dropout((0.3)))
+    model.add(AveragePooling2D(pool_size=(2, 2)))
     model.add(Flatten())
-    model.add(Dense(1024, activation="tanh"))
+    model.add(Dense(500, activation="tanh"))
+    model.add(Dropout((0.3)))
     model.add(Dense(1, activation="sigmoid"))
     return model
 
@@ -83,7 +85,7 @@ def generator_containing_discriminator(generator, discriminator):
 def train():
     now_time = datetime.datetime.now()
     folder_name = "{0:%Y-%m-%d_%H-%M}".format(now_time)
-    BATCH_SIZE = 50
+    BATCH_SIZE = 128
     half_batch = int(BATCH_SIZE/2)
     epoch_count = 50000
 
@@ -95,10 +97,12 @@ def train():
     discriminator = discriminator_model()
     discriminator_on_generator = generator_containing_discriminator(generator, discriminator)
 
-    g_optim = SGD(lr=0.0001, momentum=0.8, nesterov=True)
-    d_optim = SGD(lr=0.0001, momentum=0.8, nesterov=True)
+    #g_optim = SGD(lr=0.0001, momentum=0.8, nesterov=True)
+    #d_optim = SGD(lr=0.0001, momentum=0.8, nesterov=True)
+    g_optim = SGD()
+    d_optim = SGD()
 
-    generator.compile(loss="binary_crossentropy", optimizer="SGD")
+    generator.compile(loss="binary_crossentropy", optimizer=g_optim)
     discriminator.trainable = True
     discriminator.compile(loss="binary_crossentropy", optimizer=d_optim)
     discriminator_on_generator.compile(
@@ -109,7 +113,7 @@ def train():
 
         idx = np.random.randint(0, X_train.shape[0], half_batch)
         real_imgs = X_train[idx]
-        noise = np.random.uniform(-1, 1, (half_batch, 1000))
+        noise = np.random.uniform(-1, 1, (half_batch, 500))
         generated_images = generator.predict(noise)
 
         if epoch % 100 == 0:
@@ -126,7 +130,7 @@ def train():
         d_loss_fake = discriminator.train_on_batch(generated_images, np.zeros((half_batch, 1)))
         d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
-        noise = np.random.uniform(-1, 1, (BATCH_SIZE, 1000))
+        noise = np.random.uniform(-1, 1, (BATCH_SIZE, 500))
         g_loss = discriminator_on_generator.train_on_batch(noise, np.ones((BATCH_SIZE, 1)))
         print("%d [D loss: %f] [G loss: %f]" % (epoch, d_loss, g_loss))
 
@@ -135,8 +139,10 @@ def train():
             if not os.path.isdir(folder_path):
                 os.makedirs(folder_path)
 
-            generator.save_weights(folder_path + 'generatorWeight.h5')
-            discriminator.save_weights(folder_path + 'discriminatorWeight.h5')
+            #generator.save_weights(folder_path + 'generatorWeight.h5')
+            #discriminator.save_weights(folder_path + 'discriminatorWeight.h5')
+            generator.save(folder_path + 'generator.h5')
+            discriminator.save(folder_path + 'discriminator.h5')
 
 
 if __name__ == "__main__":

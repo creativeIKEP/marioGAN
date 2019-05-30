@@ -7,10 +7,10 @@ import math
 
 def dataset_load():
     image_datas = []
-    input_dirname = os.path.join('images/dataset', '*')
+    input_dirname = os.path.join('images/dataset2', '*')
     files = glob.glob(input_dirname)
     for picture in files:
-        img = load_img(picture, target_size=(256, 256))
+        img = load_img(picture, target_size=(128, 128))
         imgArray = img_to_array(img)
         image_datas.append(imgArray)
 
