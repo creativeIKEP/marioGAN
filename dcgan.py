@@ -13,7 +13,6 @@ import datetime
 
 def generator_model():
     model = Sequential()
-    #model.add(Dense(1024, input_shape=(100, ), activation="tanh"))
 
     model.add(Dense(16*16*256, input_shape=(1000, )))
     model.add(BatchNormalization())
