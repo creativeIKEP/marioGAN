@@ -20,7 +20,7 @@ def generator_model():
     model.add(Activation("tanh"))
 
     model.add(Reshape((16, 16, 256), input_shape=(16*16*256,)))
-    model.add(Dropout((0.5)))
+    #model.add(Dropout((0.5)))
 
     model.add(UpSampling2D(size=(2, 2)))
     model.add(Conv2D(128, (5, 5),
@@ -28,7 +28,7 @@ def generator_model():
                      activation="tanh",
                      data_format="channels_last"))
 
-    model.add(Dropout((0.5)))
+    #model.add(Dropout((0.5)))
 
     model.add(UpSampling2D(size=(2, 2)))
 
@@ -37,7 +37,16 @@ def generator_model():
                      activation="tanh",
                      data_format="channels_last"))
 
-    model.add(Dropout((0.5)))
+    #model.add(Dropout((0.5)))
+
+    model.add(UpSampling2D(size=(2, 2)))
+
+    model.add(Conv2D(32, (5, 5),
+                     padding="same",
+                     activation="tanh",
+                     data_format="channels_last"))
+
+    #model.add(Dropout((0.5)))
 
     model.add(UpSampling2D(size=(2, 2)))
 
@@ -51,9 +60,16 @@ def generator_model():
 
 def discriminator_model():
     model = Sequential()
+    model.add(Conv2D(32, (5, 5),
+                     padding="same",
+                     input_shape=(256, 256, 3),
+                     data_format="channels_last"))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(Dropout((0.3)))
+    model.add(AveragePooling2D(pool_size=(2, 2)))
+
     model.add(Conv2D(64, (5, 5),
                      padding="same",
-                     input_shape=(128, 128, 3),
                      data_format="channels_last"))
     model.add(LeakyReLU(alpha=0.2))
     model.add(Dropout((0.3)))
@@ -85,7 +101,7 @@ def generator_containing_discriminator(generator, discriminator):
 def train():
     now_time = datetime.datetime.now()
     folder_name = "{0:%Y-%m-%d_%H-%M}".format(now_time)
-    BATCH_SIZE = 128
+    BATCH_SIZE = 30
     half_batch = int(BATCH_SIZE/2)
     epoch_count = 50000
 
@@ -97,10 +113,10 @@ def train():
     discriminator = discriminator_model()
     discriminator_on_generator = generator_containing_discriminator(generator, discriminator)
 
-    #g_optim = SGD(lr=0.0001, momentum=0.8, nesterov=True)
-    #d_optim = SGD(lr=0.0001, momentum=0.8, nesterov=True)
-    g_optim = SGD()
-    d_optim = SGD()
+    g_optim = SGD(lr=0.0001, momentum=0.8, nesterov=True)
+    d_optim = SGD(lr=0.0001, momentum=0.8, nesterov=True)
+    #g_optim = SGD()
+    #d_optim = SGD()
 
     generator.compile(loss="binary_crossentropy", optimizer=g_optim)
     discriminator.trainable = True
