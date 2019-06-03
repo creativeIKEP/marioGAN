@@ -101,7 +101,7 @@ def generator_containing_discriminator(generator, discriminator):
 def train():
     now_time = datetime.datetime.now()
     folder_name = "{0:%Y-%m-%d_%H-%M}".format(now_time)
-    BATCH_SIZE = 30
+    BATCH_SIZE = 2
     half_batch = int(BATCH_SIZE/2)
     epoch_count = 50000
 
@@ -125,6 +125,7 @@ def train():
         loss="binary_crossentropy", optimizer=g_optim)
 
     for epoch in range(epoch_count):
+        epoch += 1
         print("Epoch is", epoch)
 
         idx = np.random.randint(0, X_train.shape[0], half_batch)
@@ -142,8 +143,10 @@ def train():
             Image.fromarray(image.astype(np.uint8)).save(folder_path + str(epoch)+".png")
 
 
-        d_loss_real = discriminator.train_on_batch(real_imgs, np.ones((half_batch, 1)))
-        d_loss_fake = discriminator.train_on_batch(generated_images, np.zeros((half_batch, 1)))
+        #d_loss_real = discriminator.train_on_batch(real_imgs, np.ones((half_batch, 1)))
+        #d_loss_fake = discriminator.train_on_batch(generated_images, np.zeros((half_batch, 1)))
+        d_loss_real = discriminator.train_on_batch(real_imgs, np.random.uniform(0.7, 1.2, half_batch))
+        d_loss_fake = discriminator.train_on_batch(generated_images, np.random.uniform(0, 0.3, half_batch))
         d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
         noise = np.random.uniform(-1, 1, (BATCH_SIZE, 500))
