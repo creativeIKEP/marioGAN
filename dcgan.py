@@ -13,6 +13,27 @@ import datetime
 
 
 def generator_model():
+    """
+    model = Sequential()
+    model.add(Dense(1024, input_shape=(100, ), activation="tanh"))
+    model.add(Dense(128 * 7 * 7))
+    model.add(BatchNormalization())
+    model.add(Activation("tanh"))
+    model.add(Reshape((7, 7, 128), input_shape=(7 * 7 * 128,)))
+    model.add(UpSampling2D(size=(2, 2)))
+    model.add(Conv2D(64, (5, 5),
+                     padding="same",
+                     activation="tanh",
+                     data_format="channels_last"))
+    model.add(UpSampling2D(size=(2, 2)))
+    model.add(Conv2D(1, (5, 5),
+                     padding="same",
+                     activation="tanh",
+                     data_format="channels_last"))
+    return model
+    """
+    #mnistから変更
+
     model = Sequential()
 
     model.add(Dense(16*16*256, input_shape=(500, )))
@@ -59,6 +80,24 @@ def generator_model():
 
 
 def discriminator_model():
+    """
+    model = Sequential()
+    model.add(Conv2D(64, (5, 5),
+                     padding="same",
+                     input_shape=(28, 28, 1),
+                     activation="tanh",
+                     data_format="channels_last"))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(128, (5, 5),
+                     activation="tanh",
+                     data_format="channels_last"))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Flatten())
+    model.add(Dense(1024, activation="tanh"))
+    model.add(Dense(1, activation="sigmoid"))
+    return model
+    """
+    #mnistから変更
     model = Sequential()
     model.add(Conv2D(32, (5, 5),
                      padding="same",
@@ -90,6 +129,7 @@ def discriminator_model():
     return model
 
 
+
 def generator_containing_discriminator(generator, discriminator):
     model = Sequential()
     model.add(generator)
@@ -101,12 +141,14 @@ def generator_containing_discriminator(generator, discriminator):
 def train():
     now_time = datetime.datetime.now()
     folder_name = "{0:%Y-%m-%d_%H-%M}".format(now_time)
-    BATCH_SIZE = 2
+    #mnistから変更
+    BATCH_SIZE = 25 * 2
     half_batch = int(BATCH_SIZE/2)
-    epoch_count = 50000
+    epoch_count = 500000
 
 
     X_train = dataset_load()
+    #mnistから変更
     X_train = (X_train.astype(np.float32) - 127.5) / 127.5
 
     generator = generator_model()
@@ -130,6 +172,7 @@ def train():
 
         idx = np.random.randint(0, X_train.shape[0], half_batch)
         real_imgs = X_train[idx]
+        #mnistから変更
         noise = np.random.uniform(-1, 1, (half_batch, 500))
         generated_images = generator.predict(noise)
 
@@ -149,6 +192,7 @@ def train():
         d_loss_fake = discriminator.train_on_batch(generated_images, np.random.uniform(0, 0.3, half_batch))
         d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
+        #mnistから変更
         noise = np.random.uniform(-1, 1, (BATCH_SIZE, 500))
         g_loss = discriminator_on_generator.train_on_batch(noise, np.ones((BATCH_SIZE, 1)))
         print("%d [D loss: %f] [G loss: %f]" % (epoch, d_loss, g_loss))
